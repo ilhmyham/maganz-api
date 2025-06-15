@@ -19,6 +19,11 @@ class Profile extends Model
         'company_description'
     ];
 
+    protected $casts = [
+        'birthdate' => 'date', // atau 'datetime' jika kolomnya menyimpan waktu juga
+    ];
+
+
     public function user() : BelongsTo
     {
         return $this->belongsTo(User::class);

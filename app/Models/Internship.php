@@ -10,8 +10,13 @@ class Internship extends Model
 {
     protected $fillable = [
         'company_id', 'title', 'description', 'location',
-        'required_skills', 'start_date', 'end_date', 'is_active'
+        'required_skills', 'start_date', 'end_date', 'division_id', 'is_active'
     ];
+
+    public function division() : BelongsTo
+    {
+        return $this->belongsTo(Division::class);
+    }
 
     public function company() : BelongsTo
     {

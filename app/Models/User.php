@@ -27,7 +27,6 @@ class User extends Authenticatable
         'phone',
         'password',
         'role_id',
-        'phone'
     ];
 
     // Relasi ke role (many to one)
@@ -39,6 +38,18 @@ class User extends Authenticatable
     public function profile() : HasOne
     {
         return $this->hasOne(Profile::class);
+    }
+
+    public function divisions()
+    {
+        return $this->hasMany(Division::class, 'company_id');
+    }
+
+    public function internships()
+    {
+        // 'company_id' adalah foreign key di tabel 'internships'
+        // 'id' adalah primary key di tabel 'users' (tabel model ini)
+        return $this->hasMany(Internship::class, 'company_id', 'id');
     }
 
     /**

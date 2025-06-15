@@ -12,7 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // TAMBAHKAN BLOK ->alias() DI SINI
+        $middleware->alias([
+            'ensure.profile.complete' => \App\Http\Middleware\EnsureProfileIsComplete::class,
+            // Kamu bisa menambahkan alias lain di sini di masa depan
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

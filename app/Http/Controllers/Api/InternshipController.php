@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Internship;
+use App\Models\Division;
 use App\Models\Application;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -15,7 +16,7 @@ class InternshipController extends Controller
     public function index(Request $request)
     {
         $query = Internship::where('is_active', true)
-            ->with('company.profile');
+        ->with(['company.profile', 'division']);
 
         // Filter by skill
         if ($request->has('skill')) {
@@ -38,7 +39,8 @@ class InternshipController extends Controller
             'required_skills' => 'required|string',
             'location' => 'required|string',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date'
+            'end_date' => 'required|date|after:start_date',
+            'division_id' => 'required|exists:divisions,id'
         ]);
 
         $internship = Internship::create([
@@ -95,7 +97,8 @@ class InternshipController extends Controller
             'location' => 'sometimes|string',
             'start_date' => 'sometimes|date',
             'end_date' => 'sometimes|date|after:start_date',
-            'is_active' => 'sometimes|boolean'
+            'is_active' => 'sometimes|boolean',
+            'division_id' => 'sometimes|exists:divisions,id'
         ]);
 
         $internship->update($validated);

@@ -30,18 +30,26 @@ class ProfileController extends Controller
     Log::info('Request Data:', $request->all());
     Log::info('Files:', $request->file());
 
+
+
     $user = auth()->user();
     $isCompany = $user->role_id == 2; // Asumsi role_id 2 = company
     $isStudent = $user->role_id == 1;
+
+    Log::info('Pengecekan peran user:', [
+        'is_company' => $isCompany,
+        'is_student' => $isStudent
+    ]);
 
     // Validasi dinamis tergantung role
     $validated = $request->validate([
         'address' => 'nullable|string',
         'photo' => 'nullable|image|max:2048',
         'birthdate' => 'nullable|date',
-        'gender' => 'required|in:pria,wanita',
+
 
         // Field untuk mahasiswa
+        'gender' => $isStudent ? 'required|in:pria,wanita' : 'nullable|string',
         'skills' => $isStudent ? 'required|string' : 'nullable|string',
         'university' => $isStudent ? 'required|string' : 'nullable|string',
 

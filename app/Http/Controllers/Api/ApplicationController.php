@@ -8,6 +8,8 @@ use App\Models\Internship;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class ApplicationController extends Controller
 {
@@ -22,8 +24,9 @@ class ApplicationController extends Controller
         }
 
         $applications = $internship->applications()
-            ->with('student.profile')
-            ->get();
+        ->with(['student.profile', 'internship.division']) // <-- UBAH DI SINI
+        ->get();
+
 
         return response()->json(['data' => $applications]);
     }
@@ -35,7 +38,11 @@ class ApplicationController extends Controller
     {
         // Validasi
         $validated = $request->validate([
-            'resume' => 'required|file|mimes:pdf,doc,docx|max:2048', // Max 2MB
+            'resume_url' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            'ktp_url' => 'required|file|mimes:pdf,doc,docx|max:2048', // Max 2MB
+            'transkipNilai_url' => 'required|file|mimes:pdf,doc,docx|max:2048', // Max 2MB
+
+             // Max 2MB
             // 'cover_letter' => 'nullable|string|max:1000',
         ]);
 
@@ -46,16 +53,19 @@ class ApplicationController extends Controller
 
 
         // Upload file resume
-        $resumePath = $request->file('resume')->store('resumes', 'public');
-        $resumePath = $request->file('ktp')->store('ktps', 'public');
-        $resumePath = $request->file('transkip')->store('transkips', 'public');
-        $resumePath = $request->file('surat_balasan')->store('surat_balasan', 'public');
+        $resumePath = $request->file('resume_url')->store('resumes', 'public');
+        $resumePathktp = $request->file('ktp_url')->store('ktps', 'public');
+        $resumePathtranskip = $request->file('transkipNilai_url')->store('transkips', 'public');
+
+        // $resumePathSb = $request->file('surat_balasan')->store('surat_balasan', 'public');
 
         // Buat aplikasi
         $application = Application::create([
             'internship_id' => $internship->id,
             'student_id' => auth()->id(),
             'resume_url' => Storage::url($resumePath),
+            'ktp_url' => Storage::url($resumePathktp),
+            'transkipNilai_url' => Storage::url($resumePathtranskip),
             // 'cover_letter' => $validated['cover_letter'],
             'status' => 'pending',
         ]);
@@ -70,23 +80,42 @@ class ApplicationController extends Controller
      * Mengupdate status aplikasi (perusahaan)
      */
     public function updateStatus(Request $request, Application $application)
-    {
-        // Validasi hanya pemilik magang yang bisa update
-        if (auth()->id() !== $application->internship->company_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $validated = $request->validate([
-            'status' => ['required', Rule::in(['pending', 'accepted', 'rejected'])]
-        ]);
-
-        $application->update(['status' => $validated['status']]);
-
-        return response()->json([
-            'message' => 'Status lamaran diperbarui',
-            'data' => $application
-        ]);
+{
+    // Validasi hanya pemilik magang yang bisa update
+    if (auth()->id() !== $application->internship->company_id) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
+
+    $validated = $request->validate([
+        'status' => ['required', Rule::in(['pending', 'accepted', 'rejected'])],
+        'surat_balasan' => ['nullable', 'file', 'mimes:pdf', 'max:2048'], // maksimal 2MB PDF
+    ]);
+
+    $updateData = [
+        'status' => $validated['status'],
+    ];
+
+    if ($validated['status'] === 'accepted' && $request->hasFile('surat_balasan')) {
+        $file = $request->file('surat_balasan');
+
+        // Simpan file di storage/app/public/surat_balasan/
+        $path = $file->storeAs(
+            'public/surat_balasan',
+            Str::uuid() . '.' . $file->getClientOriginalExtension()
+        );
+
+        // Simpan URL dan waktu upload
+        $updateData['surat_balasan_url'] = Storage::url($path); // jika ingin URL publik
+        $updateData['surat_balasan_at'] = Carbon::now();
+    }
+
+    $application->update($updateData);
+
+    return response()->json([
+        'message' => 'Status lamaran dan surat balasan diperbarui',
+        'data' => $application
+    ]);
+}
 
     /**
      * Mendapatkan semua lamaran user (mahasiswa)
@@ -94,8 +123,8 @@ class ApplicationController extends Controller
     public function userApplications()
     {
         $applications = Application::where('student_id', auth()->id())
-            ->with('internship.company.profile')
-            ->get();
+        ->with(['internship.company.profile', 'internship.division']) // <-- UBAH DI SINI
+        ->get();
 
         return response()->json(['data' => $applications]);
     }
