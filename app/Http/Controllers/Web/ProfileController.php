@@ -10,16 +10,11 @@ use App\Models\Profile; // Pastikan model Profile di-import
 
 class ProfileController extends Controller
 {
-    /**
-     * Menampilkan form untuk melengkapi profil.
-     */
-
      public function show()
     {
         $user = Auth::user();
         $profile = $user->profile;
 
-        // Pastikan profil ada sebelum menampilkannya
         if (!$profile) {
             return redirect()->route('profile.create')->with('warning', 'Harap lengkapi profil perusahaan Anda.');
         }
@@ -37,7 +32,6 @@ class ProfileController extends Controller
         $user = Auth::user();
         $profile = $user->profile;
 
-        // Jika profil belum ada, arahkan untuk membuat baru
         if (!$profile) {
             return redirect()->route('profile.create');
         }
@@ -45,47 +39,36 @@ class ProfileController extends Controller
         return view('company.profile_edit', compact('profile'));
     }
 
-    /**
-     * Menyimpan data profil yang baru diisi.
-     */
+
     public function store(Request $request)
     {
-        // 1. Validasi input dari form
         $validated = $request->validate([
             'company_name' => 'required|string|max:255',
             'company_description' => 'required|string',
             'address' => 'required|string|max:255',
-            'birthdate' => 'required|date', // 'birthdate' untuk tanggal berdiri
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048' // Foto opsional, maks 2MB
+            'birthdate' => 'required|date',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         $user = Auth::user();
         $photoUrl = null;
 
-        // 2. Proses upload foto jika ada
         if ($request->hasFile('photo')) {
-            // Hapus foto lama jika ada (opsional, bagus untuk edit profil nanti)
-            // if ($user->profile && $user->profile->photo_url) {
-            //     Storage::disk('public')->delete(str_replace('/storage/', '', $user->profile->photo_url));
-            // }
             $path = $request->file('photo')->store('profile-photos', 'public');
             $photoUrl = Storage::url($path);
         }
 
-        // 3. Simpan atau Update data ke tabel profiles
-        // Menggunakan updateOrCreate agar bisa dipakai untuk membuat baru atau mengupdate jika sudah ada
         Profile::updateOrCreate(
-            ['user_id' => $user->id], // Kondisi pencarian: cari profile dengan user_id ini
-            [ // Data yang akan di-update atau dibuat baru
+            ['user_id' => $user->id],
+            [
                 'company_name' => $validated['company_name'],
                 'company_description' => $validated['company_description'],
                 'address' => $validated['address'],
                 'birthdate' => $validated['birthdate'],
-                'photo_url' => $photoUrl ?? $user->profile?->photo_url, // Gunakan foto baru jika ada, jika tidak, pertahankan foto lama
+                'photo_url' => $photoUrl ?? $user->profile?->photo_url,
             ]
         );
 
-        // 4. Arahkan ke dashboard utama setelah profil disimpan
         return redirect()->route('dashboard')->with('success', 'Profil perusahaan berhasil disimpan!');
     }
 
@@ -100,12 +83,11 @@ class ProfileController extends Controller
         ]);
 
         $user = Auth::user();
-        $profile = Profile::where('user_id', $user->id)->firstOrFail(); // Pastikan profil ada
+        $profile = Profile::where('user_id', $user->id)->firstOrFail();
 
-        $photoUrl = $profile->photo_url; // Default ke foto yang sudah ada
+        $photoUrl = $profile->photo_url;
 
         if ($request->hasFile('photo')) {
-            // Hapus foto lama jika ada
             if ($photoUrl) {
                 Storage::disk('public')->delete(str_replace('/storage/', '', $photoUrl));
             }

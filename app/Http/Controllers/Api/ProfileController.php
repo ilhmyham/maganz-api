@@ -27,58 +27,56 @@ class ProfileController extends Controller
     // Update profile (digunakan oleh kedua role)
     public function update(Request $request)
 {
-    Log::info('Request Data:', $request->all());
-    Log::info('Files:', $request->file());
-
-
+    Log::info('Update Profile Request Data:', $request->all());
+    Log::info('Update Profile Files:', $request->file());
 
     $user = auth()->user();
-    $isCompany = $user->role_id == 2; // Asumsi role_id 2 = company
-    $isStudent = $user->role_id == 1;
 
-    Log::info('Pengecekan peran user:', [
-        'is_company' => $isCompany,
-        'is_student' => $isStudent
+    // 1. Validasi untuk data di tabel users
+    // Email harus unik, tapi abaikan user saat ini
+    $userValidated = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+        'phone' => 'sometimes|string|max:20',
     ]);
 
-    // Validasi dinamis tergantung role
-    $validated = $request->validate([
+    // 2. Validasi untuk data di tabel profiles
+    $profileValidated = $request->validate([
         'address' => 'nullable|string',
         'photo' => 'nullable|image|max:2048',
         'birthdate' => 'nullable|date',
-
-
-        // Field untuk mahasiswa
-        'gender' => $isStudent ? 'required|in:pria,wanita' : 'nullable|string',
-        'skills' => $isStudent ? 'required|string' : 'nullable|string',
-        'university' => $isStudent ? 'required|string' : 'nullable|string',
-
-        // Field untuk perusahaan
-        'company_name' => $isCompany ? 'required|string' : 'nullable|string',
-        'company_description' => $isCompany ? 'required|string' : 'nullable|string',
+        'gender' => 'nullable|in:pria,wanita',
+        'skills' => 'nullable|string',
+        'university' => 'nullable|string',
+        // Anda bisa menambahkan 'company_name' dan 'company_description' di sini jika diperlukan
     ]);
 
-    // Proses upload foto jika ada
+    // 3. Update data di tabel users jika ada datanya
+    // array_filter() akan menghapus field yang kosong dari request
+    if (!empty(array_filter($userValidated))) {
+        $user->update($userValidated);
+    }
+
+    // 4. Proses upload foto (logika ini sudah benar)
     if ($request->hasFile('photo')) {
+        // Hapus foto lama jika ada
+        if ($user->profile && $user->profile->photo_url) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $user->profile->photo_url));
+        }
         $path = $request->file('photo')->store('profile-photos', 'public');
-        $validated['photo_url'] = Storage::url($path);
+        $profileValidated['photo_url'] = Storage::url($path);
     }
 
-    // Tambahkan user_id jika belum ada
-    $validated['user_id'] = $user->id;
+    // 5. Update atau buat data di tabel profiles
+    $user->profile()->updateOrCreate(
+        ['user_id' => $user->id], // Cari berdasarkan user_id
+        array_filter($profileValidated) // Simpan data yang tidak kosong
+    );
 
-    // Update profil
-    $profile = $user->profile;
-    if (!$profile) {
-        $profile = new \App\Models\Profile();
-        $profile->user_id = $user->id;
-    }
-
-    $profile->fill($validated)->save();
-
+    // 6. Kembalikan response sukses
     return response()->json([
-        'message' => 'Profile updated!',
-        'data' => $profile
+        'message' => 'Profil berhasil diperbarui!',
+        'data' => $user->load('profile') // Kirim kembali data user yang sudah di-refresh
     ]);
 }
 

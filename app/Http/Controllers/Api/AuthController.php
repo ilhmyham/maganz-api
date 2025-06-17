@@ -39,7 +39,7 @@ class AuthController extends Controller
         'role_id' => 1,
     ]);
 
-    $user->profile()->create([]); // buat profile kosong
+    $user->profile()->create([]);
 
     return response()->json([
         'message' => 'Registrasi berhasil',
@@ -47,7 +47,6 @@ class AuthController extends Controller
     ], 201);
 }
 
-    // Login user
     public function login(Request $request)
     {
         $request->validate([
@@ -63,7 +62,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Hapus token lama (opsional)
         $user->tokens()->delete();
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -76,7 +74,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // Ambil data user yang sedang login
     public function me(Request $request)
     {
         return response()->json([
@@ -84,7 +81,6 @@ class AuthController extends Controller
         ]);
     }
 
-    // Logout user (hapus token)
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
